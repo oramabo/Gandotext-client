@@ -243,10 +243,11 @@ async function showNotGandonResult(result) {
     elements.userRank.textContent = '-';
   }
 
-  // Show username section if not set
-  if (!result.username) {
+  // Show username section if user can change from AnonymousGandon# to custom
+  if (result.canChangeUsername) {
     elements.usernameSection.classList.remove('hidden');
-    elements.usernameDisplay.classList.add('hidden');
+    elements.usernameDisplay.textContent = `Current name: ${result.username}`;
+    elements.usernameDisplay.classList.remove('hidden');
   } else {
     elements.usernameSection.classList.add('hidden');
     elements.usernameDisplay.textContent = `Leaderboard name: ${result.username}`;
