@@ -1,0 +1,405 @@
+/**
+ * GandonOmeter - Main Popup Logic
+ */
+
+// DOM Elements
+const views = {
+  loading: document.getElementById('loadingView'),
+  ready: document.getElementById('readyView'),
+  checking: document.getElementById('checkingView'),
+  gandon: document.getElementById('gandonView'),
+  notGandon: document.getElementById('notGandonView'),
+  alreadyChecked: document.getElementById('alreadyCheckedView'),
+  leaderboard: document.getElementById('leaderboardView')
+};
+
+const elements = {
+  checkBtn: document.getElementById('checkBtn'),
+  leaderboardBtn: document.getElementById('leaderboardBtn'),
+  backFromLeaderboard: document.getElementById('backFromLeaderboard'),
+  progressFill: document.getElementById('progressFill'),
+  checkingMessages: document.getElementById('checkingMessages'),
+  matrixBg: document.getElementById('matrixBg'),
+  confetti: document.getElementById('confetti'),
+
+  // Stats
+  gandonDays: document.getElementById('gandonDays'),
+  notGandonCount: document.getElementById('notGandonCount'),
+  notGandonTotal: document.getElementById('notGandonTotal'),
+  userRank: document.getElementById('userRank'),
+
+  // Already checked
+  alreadyIcon: document.getElementById('alreadyIcon'),
+  alreadyTitle: document.getElementById('alreadyTitle'),
+  alreadyResult: document.getElementById('alreadyResult'),
+  hours: document.getElementById('hours'),
+  minutes: document.getElementById('minutes'),
+  seconds: document.getElementById('seconds'),
+
+  // Username
+  usernameSection: document.getElementById('usernameSection'),
+  usernameInput: document.getElementById('usernameInput'),
+  setUsernameBtn: document.getElementById('setUsernameBtn'),
+  usernameDisplay: document.getElementById('usernameDisplay'),
+
+  // Leaderboard
+  leaderboardList: document.getElementById('leaderboardList')
+};
+
+// State
+let fingerprintHash = null;
+let currentView = 'loading';
+let countdownInterval = null;
+let lastCheckResult = null;
+
+// ========================================
+// View Management
+// ========================================
+function showView(viewName) {
+  Object.keys(views).forEach(key => {
+    views[key].classList.add('hidden');
+  });
+  views[viewName].classList.remove('hidden');
+  currentView = viewName;
+}
+
+// ========================================
+// Matrix Background Animation
+// ========================================
+function initMatrixBackground() {
+  const chars = 'GANDONSUKAPRIVETBLYADCYKANAHUY0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const matrixBg = elements.matrixBg;
+
+  setInterval(() => {
+    if (document.hidden) return;
+
+    const char = document.createElement('span');
+    char.className = 'matrix-char';
+    char.textContent = chars[Math.floor(Math.random() * chars.length)];
+    char.style.left = Math.random() * 100 + '%';
+    char.style.animationDuration = (3 + Math.random() * 4) + 's';
+
+    matrixBg.appendChild(char);
+
+    setTimeout(() => char.remove(), 7000);
+  }, 200);
+}
+
+// ========================================
+// Confetti Animation
+// ========================================
+function createConfetti() {
+  const colors = ['#ffd700', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96f', '#ff8c00'];
+  const confettiContainer = elements.confetti;
+  confettiContainer.innerHTML = '';
+
+  for (let i = 0; i < 50; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDelay = Math.random() * 0.5 + 's';
+    piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+    confettiContainer.appendChild(piece);
+  }
+}
+
+// ========================================
+// Countdown Timer
+// ========================================
+function startCountdown(targetTime) {
+  if (countdownInterval) clearInterval(countdownInterval);
+
+  const updateCountdown = () => {
+    const now = new Date().getTime();
+    const target = new Date(targetTime).getTime();
+    const diff = target - now;
+
+    if (diff <= 0) {
+      clearInterval(countdownInterval);
+      // Refresh to check again
+      init();
+      return;
+    }
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    elements.hours.textContent = String(hours).padStart(2, '0');
+    elements.minutes.textContent = String(minutes).padStart(2, '0');
+    elements.seconds.textContent = String(seconds).padStart(2, '0');
+  };
+
+  updateCountdown();
+  countdownInterval = setInterval(updateCountdown, 1000);
+}
+
+// ========================================
+// Checking Animation
+// ========================================
+async function playCheckingAnimation() {
+  const messages = elements.checkingMessages.querySelectorAll('.check-msg');
+  let progress = 0;
+  const duration = 3000; // 3 seconds
+  const interval = 50;
+  const steps = duration / interval;
+  const progressPerStep = 100 / steps;
+
+  // Cycle through messages
+  let messageIndex = 0;
+  const messageInterval = setInterval(() => {
+    messages.forEach((msg, i) => {
+      msg.classList.toggle('active', i === messageIndex);
+    });
+    messageIndex = (messageIndex + 1) % messages.length;
+  }, 600);
+
+  // Progress bar animation
+  return new Promise((resolve) => {
+    const progressInterval = setInterval(() => {
+      progress += progressPerStep;
+      elements.progressFill.style.width = Math.min(progress, 100) + '%';
+
+      if (progress >= 100) {
+        clearInterval(progressInterval);
+        clearInterval(messageInterval);
+        resolve();
+      }
+    }, interval);
+  });
+}
+
+// ========================================
+// Check Logic
+// ========================================
+async function performCheck() {
+  showView('checking');
+  elements.progressFill.style.width = '0%';
+
+  // Start animation
+  const animationPromise = playCheckingAnimation();
+
+  // Make API call (will likely finish before animation)
+  let result;
+  try {
+    const response = await API.check(fingerprintHash);
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+    result = response.data;
+  } catch (error) {
+    console.error('Check failed:', error);
+    // Fallback to local calculation for demo
+    result = {
+      isGandon: Math.random() > 0.005, // 0.5% not gandon
+      stats: { totalChecks: 1, notGandonCount: 0 }
+    };
+  }
+
+  // Wait for animation to complete
+  await animationPromise;
+
+  // Store result
+  lastCheckResult = result;
+  await Storage.setTodayResult(result);
+
+  // Show result
+  if (result.alreadyChecked) {
+    showAlreadyChecked(result);
+  } else if (result.isGandon) {
+    showGandonResult(result);
+  } else {
+    showNotGandonResult(result);
+  }
+}
+
+function showGandonResult(result) {
+  elements.gandonDays.textContent = result.stats?.totalChecks || 1;
+  elements.notGandonCount.textContent = result.stats?.notGandonCount || 0;
+  showView('gandon');
+}
+
+async function showNotGandonResult(result) {
+  createConfetti();
+  elements.notGandonTotal.textContent = result.stats?.notGandonCount || 1;
+
+  // Get rank
+  try {
+    const rankResponse = await API.getRank(fingerprintHash);
+    if (rankResponse.success && rankResponse.data.rank) {
+      elements.userRank.textContent = '#' + rankResponse.data.rank;
+    }
+  } catch (e) {
+    elements.userRank.textContent = '-';
+  }
+
+  // Show username section if not set
+  if (!result.username) {
+    elements.usernameSection.classList.remove('hidden');
+    elements.usernameDisplay.classList.add('hidden');
+  } else {
+    elements.usernameSection.classList.add('hidden');
+    elements.usernameDisplay.textContent = `Leaderboard name: ${result.username}`;
+    elements.usernameDisplay.classList.remove('hidden');
+  }
+
+  showView('notGandon');
+}
+
+function showAlreadyChecked(result) {
+  if (result.isGandon) {
+    elements.alreadyIcon.textContent = '\u{1F921}'; // clown
+    elements.alreadyResult.textContent = 'You ARE Gandon today. DA, TY GANDON!';
+  } else {
+    elements.alreadyIcon.textContent = '\u{1F451}'; // crown
+    elements.alreadyResult.textContent = 'You are NOT Gandon today! NE GANDON!';
+  }
+
+  startCountdown(result.nextCheckAvailable);
+  showView('alreadyChecked');
+}
+
+// ========================================
+// Username Setting
+// ========================================
+async function setUsername() {
+  const username = elements.usernameInput.value.trim();
+
+  if (username.length < 3 || username.length > 20) {
+    alert('Username must be 3-20 characters');
+    return;
+  }
+
+  if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+    alert('Username can only contain letters, numbers, underscores, and hyphens');
+    return;
+  }
+
+  try {
+    const response = await API.setUsername(fingerprintHash, username);
+
+    if (response.success) {
+      elements.usernameSection.classList.add('hidden');
+      elements.usernameDisplay.textContent = `Leaderboard name: ${username}`;
+      elements.usernameDisplay.classList.remove('hidden');
+    } else {
+      alert(response.error || 'Failed to set username');
+    }
+  } catch (error) {
+    console.error('Set username failed:', error);
+    alert('Failed to set username. Try again!');
+  }
+}
+
+// ========================================
+// Leaderboard
+// ========================================
+async function loadLeaderboard() {
+  showView('leaderboard');
+  elements.leaderboardList.innerHTML = '<p style="color: var(--text-secondary);">Loading...</p>';
+
+  try {
+    const response = await API.getLeaderboard();
+
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
+    const leaderboard = response.data.leaderboard;
+
+    if (leaderboard.length === 0) {
+      elements.leaderboardList.innerHTML = '<p style="color: var(--text-secondary);">No one has escaped Gandon status yet!</p>';
+      return;
+    }
+
+    elements.leaderboardList.innerHTML = leaderboard.map((entry, index) => {
+      let rankClass = '';
+      let rankEmoji = '';
+
+      if (index === 0) { rankClass = 'gold'; rankEmoji = '\u{1F451}'; }
+      else if (index === 1) { rankClass = 'silver'; rankEmoji = '\u{1F948}'; }
+      else if (index === 2) { rankClass = 'bronze'; rankEmoji = '\u{1F949}'; }
+
+      return `
+        <div class="leaderboard-item ${index < 3 ? 'top-3' : ''}">
+          <span class="rank ${rankClass}">${rankEmoji || '#' + entry.rank}</span>
+          <span class="username">${escapeHtml(entry.username)}</span>
+          <span class="score">${entry.notGandonCount}x</span>
+        </div>
+      `;
+    }).join('');
+
+  } catch (error) {
+    console.error('Leaderboard failed:', error);
+    elements.leaderboardList.innerHTML = '<p style="color: var(--text-secondary);">Failed to load leaderboard</p>';
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ========================================
+// Initialization
+// ========================================
+async function init() {
+  showView('loading');
+  initMatrixBackground();
+
+  // Get or generate fingerprint
+  fingerprintHash = await Storage.getFingerprintHash();
+
+  if (!fingerprintHash) {
+    fingerprintHash = await Fingerprint.generate();
+    await Storage.setFingerprintHash(fingerprintHash);
+  }
+
+  // Check cached result first
+  const cachedResult = await Storage.getTodayResult();
+
+  if (cachedResult) {
+    lastCheckResult = cachedResult;
+    showAlreadyChecked(cachedResult);
+    return;
+  }
+
+  // Check server for today's status
+  try {
+    const statusResponse = await API.getStatus(fingerprintHash);
+
+    if (statusResponse.success && statusResponse.data.hasChecked) {
+      lastCheckResult = statusResponse.data;
+      await Storage.setTodayResult(statusResponse.data);
+      showAlreadyChecked(statusResponse.data);
+      return;
+    }
+  } catch (error) {
+    console.error('Status check failed:', error);
+    // Continue to ready view
+  }
+
+  showView('ready');
+}
+
+// ========================================
+// Event Listeners
+// ========================================
+elements.checkBtn.addEventListener('click', performCheck);
+elements.leaderboardBtn.addEventListener('click', loadLeaderboard);
+elements.backFromLeaderboard.addEventListener('click', () => {
+  if (lastCheckResult) {
+    showAlreadyChecked(lastCheckResult);
+  } else {
+    showView('ready');
+  }
+});
+elements.setUsernameBtn.addEventListener('click', setUsername);
+elements.usernameInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') setUsername();
+});
+
+// Start
+init();

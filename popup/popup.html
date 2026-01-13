@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GandonOmeter</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Animated background -->
+    <div class="matrix-bg" id="matrixBg"></div>
+
+    <!-- Header -->
+    <header class="header">
+      <h1 class="title">GANDON<span class="accent">O</span>METER</h1>
+      <div class="subtitle">v1.0 // DAILY SOUL SCANNER</div>
+    </header>
+
+    <!-- Main content area - switches between views -->
+    <main class="main-content">
+
+      <!-- Loading State -->
+      <div id="loadingView" class="view">
+        <div class="loader-ring"></div>
+        <p class="loading-text">INITSIALIZATSIYA...</p>
+      </div>
+
+      <!-- Ready to Check State -->
+      <div id="readyView" class="view hidden">
+        <div class="question-mark">?</div>
+        <p class="question-text">TY GANDON SEGODNYA?</p>
+        <p class="question-subtext">Are you Gandon today?</p>
+        <button id="checkBtn" class="check-btn">
+          <span class="btn-icon">&#x1F52E;</span>
+          <span class="btn-text">PROVERIT</span>
+          <span class="btn-subtext">CHECK</span>
+        </button>
+        <div class="chance-info">0.5% chance to NOT be Gandon</div>
+      </div>
+
+      <!-- Checking Animation State -->
+      <div id="checkingView" class="view hidden">
+        <div class="scanner">
+          <div class="scanner-line"></div>
+        </div>
+        <div class="checking-messages" id="checkingMessages">
+          <p class="check-msg active">ANALIZIRUEM DNK...</p>
+          <p class="check-msg">SKANIRUEM DUSHU...</p>
+          <p class="check-msg">KONSULTIRUEMSA S BABUSHKOY...</p>
+          <p class="check-msg">PROVERYAEM KARMU...</p>
+          <p class="check-msg">IZUCHAEM ZVYOZDY...</p>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <!-- Result: Gandon (99.5%) -->
+      <div id="gandonView" class="view hidden">
+        <div class="result-icon gandon-icon">&#x1F921;</div>
+        <h2 class="result-title gandon-title">DA, TY GANDON!</h2>
+        <p class="result-subtitle">YES, YOU ARE GANDON!</p>
+        <div class="stats-box">
+          <div class="stat">
+            <span class="stat-value" id="gandonDays">0</span>
+            <span class="stat-label">days as Gandon</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="notGandonCount">0</span>
+            <span class="stat-label">times NOT Gandon</span>
+          </div>
+        </div>
+        <p class="encouragement">Poprobuy zavtra, druzhok!</p>
+        <p class="encouragement-sub">Try again tomorrow, friend!</p>
+      </div>
+
+      <!-- Result: NOT Gandon (0.5% rare!) -->
+      <div id="notGandonView" class="view hidden">
+        <div class="confetti" id="confetti"></div>
+        <div class="result-icon notgandon-icon">&#x1F451;</div>
+        <h2 class="result-title notgandon-title">NE GANDON!</h2>
+        <p class="result-subtitle rare-text">YOU ARE NOT GANDON!</p>
+        <div class="rare-badge">&#x2B50; ULTRA RARE (0.5%) &#x2B50;</div>
+        <div class="stats-box success">
+          <div class="stat">
+            <span class="stat-value" id="notGandonTotal">0</span>
+            <span class="stat-label">times NOT Gandon</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="userRank">-</span>
+            <span class="stat-label">leaderboard rank</span>
+          </div>
+        </div>
+        <div id="usernameSection" class="username-section hidden">
+          <p class="username-prompt">Enter your name for the leaderboard:</p>
+          <input type="text" id="usernameInput" class="username-input" placeholder="YourName" maxlength="20">
+          <button id="setUsernameBtn" class="username-btn">SET NAME (permanent!)</button>
+        </div>
+        <p id="usernameDisplay" class="username-display hidden"></p>
+      </div>
+
+      <!-- Already Checked State -->
+      <div id="alreadyCheckedView" class="view hidden">
+        <div class="already-icon" id="alreadyIcon">&#x1F921;</div>
+        <h2 class="already-title" id="alreadyTitle">ALREADY CHECKED</h2>
+        <p class="already-result" id="alreadyResult"></p>
+        <div class="countdown-section">
+          <p class="countdown-label">Next check available in:</p>
+          <div class="countdown" id="countdown">
+            <div class="countdown-unit">
+              <span class="countdown-value" id="hours">00</span>
+              <span class="countdown-label-small">HRS</span>
+            </div>
+            <span class="countdown-separator">:</span>
+            <div class="countdown-unit">
+              <span class="countdown-value" id="minutes">00</span>
+              <span class="countdown-label-small">MIN</span>
+            </div>
+            <span class="countdown-separator">:</span>
+            <div class="countdown-unit">
+              <span class="countdown-value" id="seconds">00</span>
+              <span class="countdown-label-small">SEC</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard View -->
+      <div id="leaderboardView" class="view hidden">
+        <h2 class="leaderboard-title">&#x1F3C6; HALL OF NOT-GANDONS &#x1F3C6;</h2>
+        <div class="leaderboard-list" id="leaderboardList">
+          <!-- Populated by JS -->
+        </div>
+        <button id="backFromLeaderboard" class="back-btn">&#x2190; BACK</button>
+      </div>
+
+    </main>
+
+    <!-- Footer Navigation -->
+    <footer class="footer">
+      <button id="leaderboardBtn" class="nav-btn">
+        <span class="nav-icon">&#x1F3C6;</span>
+        <span class="nav-text">Leaderboard</span>
+      </button>
+      <div class="reset-time">
+        <span class="reset-label">Reset at</span>
+        <span class="reset-value">00:00 GMT</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="../lib/fingerprint.js"></script>
+  <script src="../utils/storage.js"></script>
+  <script src="../utils/api.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
