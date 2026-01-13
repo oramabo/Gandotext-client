@@ -24,7 +24,7 @@
 
 body {
   width: 380px;
-  height: 520px;
+  height: 600px;
   font-family: 'Segoe UI', 'Arial', sans-serif;
   background: var(--bg-gradient);
   color: var(--text-primary);
@@ -35,7 +35,7 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 520px;
+  height: 600px;
   padding: 16px;
   overflow: hidden;
 }
@@ -145,6 +145,22 @@ body {
   justify-content: center;
   position: relative;
   z-index: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+}
+
+.main-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: var(--accent-purple);
+  border-radius: 2px;
 }
 
 .view {
@@ -153,6 +169,7 @@ body {
   align-items: center;
   text-align: center;
   width: 100%;
+  flex-shrink: 0;
 }
 
 .hidden {
@@ -605,7 +622,7 @@ body {
 
 .leaderboard-list {
   width: 100%;
-  max-height: 300px;
+  max-height: 255px;
   overflow-y: auto;
   padding-right: 8px;
 }

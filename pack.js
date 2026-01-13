@@ -111,6 +111,12 @@ try {
     // Copy manifest
     fs.copyFileSync(manifestPath, path.join(tempDir, 'manifest.json'));
 
+    // Copy background service worker
+    const backgroundPath = path.join(extensionDir, 'background.js');
+    if (fs.existsSync(backgroundPath)) {
+      fs.copyFileSync(backgroundPath, path.join(tempDir, 'background.js'));
+    }
+
     // Copy folders
     ['popup', 'lib', 'utils'].forEach(folder => {
       const srcFolder = path.join(extensionDir, folder);

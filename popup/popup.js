@@ -37,11 +37,17 @@ const elements = {
   minutes: document.getElementById('minutes'),
   seconds: document.getElementById('seconds'),
 
-  // Username
+  // Username (notGandon view)
   usernameSection: document.getElementById('usernameSection'),
   usernameInput: document.getElementById('usernameInput'),
   setUsernameBtn: document.getElementById('setUsernameBtn'),
   usernameDisplay: document.getElementById('usernameDisplay'),
+
+  // Username (alreadyChecked view)
+  usernameSectionAlready: document.getElementById('usernameSectionAlready'),
+  usernameInputAlready: document.getElementById('usernameInputAlready'),
+  setUsernameBtnAlready: document.getElementById('setUsernameBtnAlready'),
+  usernameDisplayAlready: document.getElementById('usernameDisplayAlready'),
 
   // Leaderboard
   leaderboardList: document.getElementById('leaderboardList'),
@@ -180,6 +186,13 @@ async function playCheckingAnimation() {
 }
 
 // ========================================
+// Badge Update
+// ========================================
+function notifyBadgeUpdate(hasChecked) {
+  chrome.runtime.sendMessage({ type: 'UPDATE_BADGE', checked: hasChecked });
+}
+
+// ========================================
 // Check Logic
 // ========================================
 async function performCheck() {
@@ -221,6 +234,9 @@ async function performCheck() {
   } else {
     showNotGandonResult(result);
   }
+
+  // Notify background to clear badge (user has checked)
+  notifyBadgeUpdate(true);
 }
 
 function showGandonResult(result) {
@@ -266,6 +282,17 @@ function showAlreadyChecked(result) {
     elements.alreadyResult.textContent = 'You are NOT Gandon today! NE GANDON!';
   }
 
+  // Show username section if user can still set their name (one-time only)
+  if (result.canChangeUsername) {
+    elements.usernameSectionAlready.classList.remove('hidden');
+    elements.usernameDisplayAlready.textContent = `Current: ${result.username}`;
+    elements.usernameDisplayAlready.classList.remove('hidden');
+  } else {
+    elements.usernameSectionAlready.classList.add('hidden');
+    elements.usernameDisplayAlready.textContent = `Name: ${result.username}`;
+    elements.usernameDisplayAlready.classList.remove('hidden');
+  }
+
   startCountdown(result.nextCheckAvailable);
   showView('alreadyChecked');
 }
@@ -273,8 +300,13 @@ function showAlreadyChecked(result) {
 // ========================================
 // Username Setting
 // ========================================
-async function setUsername() {
-  const username = elements.usernameInput.value.trim();
+async function setUsername(inputElement, sectionElement, displayElement) {
+  // Support both notGandon view and alreadyChecked view
+  const input = inputElement || elements.usernameInput;
+  const section = sectionElement || elements.usernameSection;
+  const display = displayElement || elements.usernameDisplay;
+
+  const username = input.value.trim();
 
   if (username.length < 3 || username.length > 20) {
     alert('Username must be 3-20 characters');
@@ -290,9 +322,22 @@ async function setUsername() {
     const response = await API.setUsername(fingerprintHash, username);
 
     if (response.success) {
+      // Hide ALL username input sections
       elements.usernameSection.classList.add('hidden');
+      elements.usernameSectionAlready.classList.add('hidden');
+
+      // Update display in both views
       elements.usernameDisplay.textContent = `Leaderboard name: ${username}`;
       elements.usernameDisplay.classList.remove('hidden');
+      elements.usernameDisplayAlready.textContent = `Name: ${username}`;
+      elements.usernameDisplayAlready.classList.remove('hidden');
+
+      // Update cached result so section doesn't reappear on view change
+      if (lastCheckResult) {
+        lastCheckResult.canChangeUsername = false;
+        lastCheckResult.username = username;
+        Storage.setTodayResult(lastCheckResult);
+      }
     } else {
       alert(response.error || 'Failed to set username');
     }
@@ -436,6 +481,8 @@ async function init() {
       showAlreadyChecked(statusResponse.data);
       // Load user identity in background
       loadUserIdentity();
+      // Notify badge that user has checked
+      notifyBadgeUpdate(true);
       return;
     }
 
@@ -470,9 +517,16 @@ elements.backFromLeaderboard.addEventListener('click', () => {
     showView('ready');
   }
 });
-elements.setUsernameBtn.addEventListener('click', setUsername);
+elements.setUsernameBtn.addEventListener('click', () => setUsername());
 elements.usernameInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') setUsername();
+});
+// Username from alreadyChecked view
+elements.setUsernameBtnAlready.addEventListener('click', () => {
+  setUsername(elements.usernameInputAlready, elements.usernameSectionAlready, elements.usernameDisplayAlready);
+});
+elements.usernameInputAlready.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') setUsername(elements.usernameInputAlready, elements.usernameSectionAlready, elements.usernameDisplayAlready);
 });
 elements.shameboardBtn.addEventListener('click', loadShameboard);
 elements.backFromShameboard.addEventListener('click', () => {
