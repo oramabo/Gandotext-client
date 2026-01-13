@@ -10,7 +10,8 @@ const views = {
   gandon: document.getElementById('gandonView'),
   notGandon: document.getElementById('notGandonView'),
   alreadyChecked: document.getElementById('alreadyCheckedView'),
-  leaderboard: document.getElementById('leaderboardView')
+  leaderboard: document.getElementById('leaderboardView'),
+  shameboard: document.getElementById('shameboardView')
 };
 
 const elements = {
@@ -43,7 +44,12 @@ const elements = {
   usernameDisplay: document.getElementById('usernameDisplay'),
 
   // Leaderboard
-  leaderboardList: document.getElementById('leaderboardList')
+  leaderboardList: document.getElementById('leaderboardList'),
+
+  // Shameboard
+  shameboardBtn: document.getElementById('shameboardBtn'),
+  backFromShameboard: document.getElementById('backFromShameboard'),
+  shameboardList: document.getElementById('shameboardList')
 };
 
 // State
@@ -343,6 +349,50 @@ function escapeHtml(text) {
 }
 
 // ========================================
+// Shame Board
+// ========================================
+async function loadShameboard() {
+  showView('shameboard');
+  elements.shameboardList.innerHTML = '<p style="color: var(--text-secondary);">Loading...</p>';
+
+  try {
+    const response = await API.getShameboard();
+
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
+    const shameboard = response.data.shameboard;
+
+    if (shameboard.length === 0) {
+      elements.shameboardList.innerHTML = '<p style="color: var(--text-secondary);">No Gandons recorded yet!</p>';
+      return;
+    }
+
+    elements.shameboardList.innerHTML = shameboard.map((entry, index) => {
+      let rankClass = '';
+      let rankEmoji = '';
+
+      if (index === 0) { rankClass = 'gold'; rankEmoji = '\u{1F4A9}'; } // poop for #1 gandon
+      else if (index === 1) { rankClass = 'silver'; rankEmoji = '\u{1F921}'; } // clown
+      else if (index === 2) { rankClass = 'bronze'; rankEmoji = '\u{1F47A}'; } // goblin
+
+      return `
+        <div class="leaderboard-item ${index < 3 ? 'top-3' : ''}">
+          <span class="rank ${rankClass}">${rankEmoji || '#' + entry.rank}</span>
+          <span class="username">${escapeHtml(entry.username)}</span>
+          <span class="score">${entry.gandonCount}x</span>
+        </div>
+      `;
+    }).join('');
+
+  } catch (error) {
+    console.error('Shameboard failed:', error);
+    elements.shameboardList.innerHTML = '<p style="color: var(--text-secondary);">Failed to load shame board</p>';
+  }
+}
+
+// ========================================
 // Initialization
 // ========================================
 async function init() {
@@ -399,6 +449,14 @@ elements.backFromLeaderboard.addEventListener('click', () => {
 elements.setUsernameBtn.addEventListener('click', setUsername);
 elements.usernameInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') setUsername();
+});
+elements.shameboardBtn.addEventListener('click', loadShameboard);
+elements.backFromShameboard.addEventListener('click', () => {
+  if (lastCheckResult) {
+    showAlreadyChecked(lastCheckResult);
+  } else {
+    showView('ready');
+  }
 });
 
 // Start

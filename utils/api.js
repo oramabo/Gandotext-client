@@ -76,6 +76,14 @@ const API = {
       }
     });
     return response.json();
+  },
+
+  /**
+   * Get shame board (top Gandons)
+   */
+  async getShameboard() {
+    const response = await fetch(`${this.BASE_URL}/leaderboard/shame`);
+    return response.json();
   }
 };
 

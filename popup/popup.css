@@ -668,6 +668,45 @@ body {
   transition: all 0.3s ease;
 }
 
+/* ========================================
+   Shame Board
+   ======================================== */
+.shameboard-title {
+  font-size: 18px;
+  color: var(--gandon-red);
+  margin-bottom: 8px;
+  text-shadow: 0 0 10px var(--gandon-red);
+}
+
+.shameboard-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  font-style: italic;
+}
+
+.shameboard-list .leaderboard-item:hover {
+  border-color: var(--gandon-red);
+}
+
+.shameboard-list .leaderboard-item.top-3 {
+  border-color: var(--gandon-red);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.shameboard-list .score {
+  color: var(--gandon-red);
+}
+
+.shame-btn {
+  border-color: var(--gandon-red) !important;
+  color: var(--gandon-red) !important;
+}
+
+.shame-btn:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+}
+
 .back-btn:hover {
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);

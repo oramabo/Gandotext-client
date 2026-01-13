@@ -135,18 +135,32 @@
         <button id="backFromLeaderboard" class="back-btn">&#x2190; BACK</button>
       </div>
 
+      <!-- Shame Board View -->
+      <div id="shameboardView" class="view hidden">
+        <h2 class="shameboard-title">&#x1F4A9; WALL OF SHAME &#x1F4A9;</h2>
+        <p class="shameboard-subtitle">Top Gandons of All Time</p>
+        <div class="leaderboard-list shameboard-list" id="shameboardList">
+          <!-- Populated by JS -->
+        </div>
+        <button id="backFromShameboard" class="back-btn">&#x2190; BACK</button>
+      </div>
+
     </main>
 
     <!-- Footer Navigation -->
     <footer class="footer">
       <button id="leaderboardBtn" class="nav-btn">
         <span class="nav-icon">&#x1F3C6;</span>
-        <span class="nav-text">Leaderboard</span>
+        <span class="nav-text">Glory</span>
       </button>
       <div class="reset-time">
         <span class="reset-label">Reset at</span>
         <span class="reset-value">00:00 GMT</span>
       </div>
+      <button id="shameboardBtn" class="nav-btn shame-btn">
+        <span class="nav-icon">&#x1F4A9;</span>
+        <span class="nav-text">Shame</span>
+      </button>
     </footer>
   </div>
 
