@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GandonOmeter",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Daily check if you're Gandon! Leaderboards, shame boards, and futuristic vibes. Da, ty gandon? Proverit",
   "permissions": [
     "storage"
