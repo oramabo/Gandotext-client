@@ -24,7 +24,7 @@
 
 body {
   width: 380px;
-  min-height: 520px;
+  height: 520px;
   font-family: 'Segoe UI', 'Arial', sans-serif;
   background: var(--bg-gradient);
   color: var(--text-primary);
@@ -35,8 +35,9 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 520px;
+  height: 520px;
   padding: 16px;
+  overflow: hidden;
 }
 
 /* ========================================
