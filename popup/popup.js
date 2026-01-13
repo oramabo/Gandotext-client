@@ -49,7 +49,10 @@ const elements = {
   // Shameboard
   shameboardBtn: document.getElementById('shameboardBtn'),
   backFromShameboard: document.getElementById('backFromShameboard'),
-  shameboardList: document.getElementById('shameboardList')
+  shameboardList: document.getElementById('shameboardList'),
+
+  // User identity
+  userIdentity: document.getElementById('userIdentity')
 };
 
 // State
@@ -393,6 +396,21 @@ async function loadShameboard() {
 }
 
 // ========================================
+// User Identity Display
+// ========================================
+async function loadUserIdentity() {
+  try {
+    const response = await API.getProfile(fingerprintHash);
+    if (response.success && response.data.displayName) {
+      elements.userIdentity.textContent = response.data.displayName;
+    }
+  } catch (error) {
+    // Silently fail - user identity is not critical
+    console.error('Failed to load user identity:', error);
+  }
+}
+
+// ========================================
 // Initialization
 // ========================================
 async function init() {
@@ -415,11 +433,15 @@ async function init() {
       lastCheckResult = statusResponse.data;
       await Storage.setTodayResult(statusResponse.data);
       showAlreadyChecked(statusResponse.data);
+      // Load user identity in background
+      loadUserIdentity();
       return;
     }
 
     // Server says not checked yet - clear stale local cache
     await Storage.clearTodayResult();
+    // Try to load user identity if they exist
+    loadUserIdentity();
 
   } catch (error) {
     console.error('Status check failed:', error);
