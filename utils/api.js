@@ -3,8 +3,7 @@
  */
 
 const API = {
-  // Railway deployment URL
-  BASE_URL: 'https://gandon.up.railway.app/api',
+  BASE_URL: 'https://gandon.app/api',
 
   /**
    * Perform daily Gandon check

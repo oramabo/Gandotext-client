@@ -72,6 +72,13 @@ const Storage = {
       date: today,
       ...result
     });
+  },
+
+  /**
+   * Clear today's cached result
+   */
+  async clearTodayResult() {
+    return this.remove('todayResult');
   }
 };
 

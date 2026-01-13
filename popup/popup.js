@@ -407,16 +407,7 @@ async function init() {
     await Storage.setFingerprintHash(fingerprintHash);
   }
 
-  // Check cached result first
-  const cachedResult = await Storage.getTodayResult();
-
-  if (cachedResult) {
-    lastCheckResult = cachedResult;
-    showAlreadyChecked(cachedResult);
-    return;
-  }
-
-  // Check server for today's status
+  // ALWAYS check server first (anti-cheat)
   try {
     const statusResponse = await API.getStatus(fingerprintHash);
 
@@ -426,9 +417,19 @@ async function init() {
       showAlreadyChecked(statusResponse.data);
       return;
     }
+
+    // Server says not checked yet - clear stale local cache
+    await Storage.clearTodayResult();
+
   } catch (error) {
     console.error('Status check failed:', error);
-    // Continue to ready view
+    // Fallback to local cache only when server unreachable
+    const cachedResult = await Storage.getTodayResult();
+    if (cachedResult) {
+      lastCheckResult = cachedResult;
+      showAlreadyChecked(cachedResult);
+      return;
+    }
   }
 
   showView('ready');
