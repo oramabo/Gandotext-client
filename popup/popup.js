@@ -387,7 +387,7 @@ async function loadLeaderboard() {
 
       return `
         <div class="leaderboard-item ${index < 3 ? 'top-3' : ''}">
-          <span class="rank ${rankClass}">${rankEmoji || '#' + (index + 1)}</span>
+          <span class="rank ${rankClass}">${rankEmoji || '#' + entry.rank}</span>
           <span class="username">${escapeHtml(entry.username)}</span>
           <span class="score">${entry.notGandonCount}x</span>
         </div>
@@ -437,7 +437,7 @@ async function loadShameboard() {
 
       return `
         <div class="leaderboard-item ${index < 3 ? 'top-3' : ''}">
-          <span class="rank ${rankClass}">${rankEmoji || '#' + (index + 1)}</span>
+          <span class="rank ${rankClass}">${rankEmoji || '#' + entry.rank}</span>
           <span class="username">${escapeHtml(entry.username)}</span>
           <span class="score">${entry.gandonCount}x</span>
         </div>
