@@ -127,7 +127,16 @@ function startCountdown(targetTime) {
 
   const updateCountdown = () => {
     const now = new Date().getTime();
-    const target = new Date(targetTime).getTime();
+    let target = new Date(targetTime).getTime();
+
+    // If targetTime is invalid/NaN, calculate next midnight as fallback
+    if (isNaN(target)) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      target = tomorrow.getTime();
+    }
+
     const diff = target - now;
 
     if (diff <= 0) {
