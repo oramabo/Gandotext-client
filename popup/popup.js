@@ -33,6 +33,10 @@ const elements = {
   alreadyIcon: document.getElementById('alreadyIcon'),
   alreadyTitle: document.getElementById('alreadyTitle'),
   alreadyResult: document.getElementById('alreadyResult'),
+  alreadyStatsBox: document.getElementById('alreadyStatsBox'),
+  alreadyTotalChecks: document.getElementById('alreadyTotalChecks'),
+  alreadyStatsLabel: document.getElementById('alreadyStatsLabel'),
+  alreadyNotGandonCount: document.getElementById('alreadyNotGandonCount'),
   hours: document.getElementById('hours'),
   minutes: document.getElementById('minutes'),
   seconds: document.getElementById('seconds'),
@@ -269,14 +273,22 @@ async function showNotGandonResult(result) {
   }
 
   // Show username section if user can change from AnonymousGandon# to custom
-  if (result.canChangeUsername) {
+  // Check canChangeUsername explicitly, or if username looks like default (AnonymousGandon#)
+  const canChange = result.canChangeUsername === true ||
+    (result.canChangeUsername !== false && result.username && result.username.startsWith('AnonymousGandon'));
+
+  if (canChange) {
     elements.usernameSection.classList.remove('hidden');
-    elements.usernameDisplay.textContent = `Current name: ${result.username}`;
+    elements.usernameDisplay.textContent = `Current name: ${result.username || 'Anonymous'}`;
     elements.usernameDisplay.classList.remove('hidden');
   } else {
     elements.usernameSection.classList.add('hidden');
-    elements.usernameDisplay.textContent = `Leaderboard name: ${result.username}`;
-    elements.usernameDisplay.classList.remove('hidden');
+    if (result.username) {
+      elements.usernameDisplay.textContent = `Leaderboard name: ${result.username}`;
+      elements.usernameDisplay.classList.remove('hidden');
+    } else {
+      elements.usernameDisplay.classList.add('hidden');
+    }
   }
 
   showView('notGandon');
@@ -286,20 +298,37 @@ function showAlreadyChecked(result) {
   if (result.isGandon) {
     elements.alreadyIcon.textContent = '\u{1F921}'; // clown
     elements.alreadyResult.textContent = 'You ARE Gandon today. DA, TY GANDON!';
+    elements.alreadyStatsBox.classList.remove('success');
+    elements.alreadyStatsLabel.textContent = 'days as Gandon';
+    elements.alreadyTotalChecks.textContent = result.stats?.totalChecks || 1;
   } else {
     elements.alreadyIcon.textContent = '\u{1F451}'; // crown
     elements.alreadyResult.textContent = 'You are NOT Gandon today! NE GANDON!';
+    elements.alreadyStatsBox.classList.add('success');
+    elements.alreadyStatsLabel.textContent = 'days checked';
+    elements.alreadyTotalChecks.textContent = result.stats?.totalChecks || 1;
   }
 
-  // Show username section if user can still set their name (one-time only)
-  if (result.canChangeUsername) {
+  // Update not-gandon count
+  elements.alreadyNotGandonCount.textContent = result.stats?.notGandonCount || 0;
+
+  // Show username section if user can still set their name
+  // Check canChangeUsername explicitly, or if username looks like default (AnonymousGandon#)
+  const canChange = result.canChangeUsername === true ||
+    (result.canChangeUsername !== false && result.username && result.username.startsWith('AnonymousGandon'));
+
+  if (canChange) {
     elements.usernameSectionAlready.classList.remove('hidden');
-    elements.usernameDisplayAlready.textContent = `Current: ${result.username}`;
+    elements.usernameDisplayAlready.textContent = `Current: ${result.username || 'Anonymous'}`;
     elements.usernameDisplayAlready.classList.remove('hidden');
   } else {
     elements.usernameSectionAlready.classList.add('hidden');
-    elements.usernameDisplayAlready.textContent = `Name: ${result.username}`;
-    elements.usernameDisplayAlready.classList.remove('hidden');
+    if (result.username) {
+      elements.usernameDisplayAlready.textContent = `Name: ${result.username}`;
+      elements.usernameDisplayAlready.classList.remove('hidden');
+    } else {
+      elements.usernameDisplayAlready.classList.add('hidden');
+    }
   }
 
   startCountdown(result.nextCheckAvailable);
