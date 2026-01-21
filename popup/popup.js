@@ -509,33 +509,45 @@ async function init() {
     await Storage.setFingerprintHash(fingerprintHash);
   }
 
-  // ALWAYS check server first (anti-cheat)
+  // Get local cache first (we'll validate against server)
+  const cachedResult = await Storage.getTodayResult();
+
+  // Check server for status
   try {
     const statusResponse = await API.getStatus(fingerprintHash);
 
     if (statusResponse.success && statusResponse.data.hasChecked) {
+      // Server confirms user has checked today
       lastCheckResult = statusResponse.data;
       await Storage.setTodayResult(statusResponse.data);
       showAlreadyChecked(statusResponse.data);
-      // Load user identity in background
       loadUserIdentity();
-      // Notify badge that user has checked
       notifyBadgeUpdate(true);
       return;
     }
 
-    // Server says not checked yet - clear stale local cache
+    // Server says not checked - but check local cache too
+    // (handles case where server doesn't track this user yet)
+    if (cachedResult && cachedResult.isGandon !== undefined) {
+      // We have a valid local result for today, use it
+      lastCheckResult = cachedResult;
+      showAlreadyChecked(cachedResult);
+      loadUserIdentity();
+      notifyBadgeUpdate(true);
+      return;
+    }
+
+    // No valid check found - clear any stale data
     await Storage.clearTodayResult();
-    // Try to load user identity if they exist
     loadUserIdentity();
 
   } catch (error) {
     console.error('Status check failed:', error);
-    // Fallback to local cache only when server unreachable
-    const cachedResult = await Storage.getTodayResult();
-    if (cachedResult) {
+    // Server unreachable - use local cache if available
+    if (cachedResult && cachedResult.isGandon !== undefined) {
       lastCheckResult = cachedResult;
       showAlreadyChecked(cachedResult);
+      notifyBadgeUpdate(true);
       return;
     }
   }
