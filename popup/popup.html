@@ -38,6 +38,14 @@
           <span class="btn-subtext">CHECK</span>
         </button>
         <div class="chance-info">0.5% chance to NOT be Gandon</div>
+        <p id="checkError" class="check-error hidden" role="alert"></p>
+      </div>
+
+      <!-- April Fools prank (display only, the real result follows) -->
+      <div id="prankView" class="view hidden">
+        <div class="result-icon" id="prankIcon"></div>
+        <h2 class="result-title" id="prankTitle"></h2>
+        <p class="result-subtitle" id="prankSubtitle"></p>
       </div>
 
       <!-- Checking Animation State -->
@@ -72,6 +80,7 @@
             <span class="stat-label">times NOT Gandon</span>
           </div>
         </div>
+        <div id="gandonExtras" class="result-extras hidden"></div>
         <p class="encouragement">Poprobuy zavtra, druzhok!</p>
         <p class="encouragement-sub">Try again tomorrow, friend!</p>
       </div>
@@ -93,6 +102,7 @@
             <span class="stat-label">leaderboard rank</span>
           </div>
         </div>
+        <div id="notGandonExtras" class="result-extras hidden"></div>
         <div id="usernameSection" class="username-section hidden">
           <p class="username-prompt">Choose a custom name for the leaderboard:</p>
           <input type="text" id="usernameInput" class="username-input" placeholder="YourName" maxlength="20">
@@ -125,6 +135,7 @@
             </div>
           </div>
         </div>
+        <div id="alreadyExtras" class="result-extras hidden"></div>
         <div id="usernameSectionAlready" class="username-section hidden">
           <p class="username-prompt">Set your leaderboard name (one time only!):</p>
           <input type="text" id="usernameInputAlready" class="username-input" placeholder="YourName" maxlength="20">
@@ -152,6 +163,44 @@
         <button id="backFromShameboard" class="back-btn">&#x2190; BACK</button>
       </div>
 
+      <!-- Profile / Dossier View -->
+      <div id="profileView" class="view hidden">
+        <h2 class="profile-title">&#x1F5C2;&#xFE0F; DOSYE</h2>
+        <p class="profile-subtitle">Your permanent gandon record</p>
+        <div id="profileContent" class="profile-content"></div>
+        <button id="backFromProfile" class="back-btn">&#x2190; BACK</button>
+      </div>
+
+      <!-- Squads View -->
+      <div id="squadsView" class="view hidden">
+        <h2 class="squads-title">&#x1F465; SQUADS</h2>
+        <p class="squads-subtitle">Private leaderboards for you and your fellow gandons</p>
+        <div class="leaderboard-list squad-list" id="squadList"></div>
+        <form class="squad-form" id="joinSquadForm">
+          <input type="text" id="joinCodeInput" class="username-input squad-input" placeholder="SQUAD CODE" maxlength="6" aria-label="Squad code" autocomplete="off" spellcheck="false">
+          <button type="submit" class="squad-btn">JOIN</button>
+        </form>
+        <form class="squad-form" id="createSquadForm">
+          <input type="text" id="squadNameInput" class="username-input squad-input" placeholder="New squad name" maxlength="24" aria-label="New squad name" autocomplete="off">
+          <button type="submit" class="squad-btn">CREATE</button>
+        </form>
+        <p id="squadsMessage" class="squad-message" role="status"></p>
+        <button id="backFromSquads" class="back-btn">&#x2190; BACK</button>
+      </div>
+
+      <!-- Squad Leaderboard View -->
+      <div id="squadBoardView" class="view hidden">
+        <h2 class="squads-title" id="squadBoardTitle"></h2>
+        <button type="button" id="copySquadCode" class="squad-code"></button>
+        <p class="squad-today" id="squadToday"></p>
+        <div class="leaderboard-list" id="squadMembers"></div>
+        <p id="squadBoardMessage" class="squad-message" role="status"></p>
+        <div class="squad-actions">
+          <button id="leaveSquadBtn" class="back-btn leave-btn">&#x1F6AA; LEAVE</button>
+          <button id="backFromSquadBoard" class="back-btn">&#x2190; BACK</button>
+        </div>
+      </div>
+
     </main>
 
     <!-- Footer Navigation -->
@@ -160,10 +209,18 @@
         <span class="nav-icon">&#x1F3C6;</span>
         <span class="nav-text">Glory</span>
       </button>
+      <button id="squadsBtn" class="nav-btn">
+        <span class="nav-icon">&#x1F465;</span>
+        <span class="nav-text">Squads</span>
+      </button>
       <div class="reset-time">
         <span class="reset-label">Reset at</span>
         <span class="reset-value">00:00 GMT</span>
       </div>
+      <button id="profileBtn" class="nav-btn">
+        <span class="nav-icon">&#x1F5C2;&#xFE0F;</span>
+        <span class="nav-text">Me</span>
+      </button>
       <button id="shameboardBtn" class="nav-btn shame-btn">
         <span class="nav-icon">&#x1F4A9;</span>
         <span class="nav-text">Shame</span>
@@ -174,6 +231,7 @@
   <script src="../lib/fingerprint.js"></script>
   <script src="../utils/storage.js"></script>
   <script src="../utils/api.js"></script>
+  <script src="extras.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

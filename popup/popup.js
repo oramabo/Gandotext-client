@@ -11,7 +11,11 @@ const views = {
   notGandon: document.getElementById('notGandonView'),
   alreadyChecked: document.getElementById('alreadyCheckedView'),
   leaderboard: document.getElementById('leaderboardView'),
-  shameboard: document.getElementById('shameboardView')
+  shameboard: document.getElementById('shameboardView'),
+  prank: document.getElementById('prankView'),
+  profile: document.getElementById('profileView'),
+  squads: document.getElementById('squadsView'),
+  squadBoard: document.getElementById('squadBoardView')
 };
 
 const elements = {
@@ -58,7 +62,44 @@ const elements = {
   shameboardList: document.getElementById('shameboardList'),
 
   // User identity
-  userIdentity: document.getElementById('userIdentity')
+  userIdentity: document.getElementById('userIdentity'),
+
+  // Check errors (rate limits, anti-cheat, server down)
+  checkError: document.getElementById('checkError'),
+
+  // Result extras (meter, diagnosis, streaks, badges)
+  gandonExtras: document.getElementById('gandonExtras'),
+  notGandonExtras: document.getElementById('notGandonExtras'),
+  alreadyExtras: document.getElementById('alreadyExtras'),
+
+  // April Fools prank
+  prankIcon: document.getElementById('prankIcon'),
+  prankTitle: document.getElementById('prankTitle'),
+  prankSubtitle: document.getElementById('prankSubtitle'),
+
+  // Profile
+  profileBtn: document.getElementById('profileBtn'),
+  backFromProfile: document.getElementById('backFromProfile'),
+  profileContent: document.getElementById('profileContent'),
+
+  // Squads
+  squadsBtn: document.getElementById('squadsBtn'),
+  backFromSquads: document.getElementById('backFromSquads'),
+  squadList: document.getElementById('squadList'),
+  joinSquadForm: document.getElementById('joinSquadForm'),
+  joinCodeInput: document.getElementById('joinCodeInput'),
+  createSquadForm: document.getElementById('createSquadForm'),
+  squadNameInput: document.getElementById('squadNameInput'),
+  squadsMessage: document.getElementById('squadsMessage'),
+
+  // Squad leaderboard
+  squadBoardTitle: document.getElementById('squadBoardTitle'),
+  copySquadCode: document.getElementById('copySquadCode'),
+  squadToday: document.getElementById('squadToday'),
+  squadMembers: document.getElementById('squadMembers'),
+  squadBoardMessage: document.getElementById('squadBoardMessage'),
+  leaveSquadBtn: document.getElementById('leaveSquadBtn'),
+  backFromSquadBoard: document.getElementById('backFromSquadBoard')
 };
 
 // State
@@ -66,6 +107,10 @@ let fingerprintHash = null;
 let currentView = 'loading';
 let countdownInterval = null;
 let lastCheckResult = null;
+let currentSquadCode = null;
+
+const PRANK_REVEAL_HOLD_MS = 2000;
+const OFFLINE_MESSAGE = 'The soul scanner is offline. Try again later.';
 
 // ========================================
 // View Management
@@ -77,6 +122,17 @@ function showView(viewName) {
   views[viewName].classList.remove('hidden');
   currentView = viewName;
 }
+
+// Back to today's result, or the check button if there isn't one yet
+function goHome() {
+  if (lastCheckResult) {
+    showAlreadyChecked(lastCheckResult);
+  } else {
+    showView('ready');
+  }
+}
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ========================================
 // Matrix Background Animation
@@ -207,33 +263,44 @@ function notifyBadgeUpdate(hasChecked) {
 async function performCheck() {
   showView('checking');
   elements.progressFill.style.width = '0%';
+  elements.checkError.classList.add('hidden');
 
   // Start animation
   const animationPromise = playCheckingAnimation();
 
   // Make API call (will likely finish before animation)
-  let result;
+  let result = null;
+  let errorMessage = null;
   try {
     const response = await API.check(fingerprintHash);
-    if (!response.success) {
-      throw new Error(response.error);
+    if (response.success) {
+      result = response.data;
+    } else {
+      // Rate limits and anti-cheat come back with a joke worth showing
+      errorMessage = response.error || OFFLINE_MESSAGE;
     }
-    result = response.data;
   } catch (error) {
     console.error('Check failed:', error);
-    // Fallback to local calculation for demo
-    result = {
-      isGandon: Math.random() > 0.005, // 0.5% not gandon
-      stats: { totalChecks: 1, notGandonCount: 0 }
-    };
+    errorMessage = OFFLINE_MESSAGE;
   }
 
   // Wait for animation to complete
   await animationPromise;
 
+  if (!result) {
+    showCheckError(errorMessage);
+    return;
+  }
+
   // Store result
   lastCheckResult = result;
   await Storage.setTodayResult(result);
+
+  // April Fools: show the opposite result first (display only)
+  const prank = result.alreadyChecked ? null : (result.specialDays || []).find(day => day.prank)?.prank;
+  if (prank) {
+    await playPrank(prank, result.isGandon);
+  }
 
   // Show result
   if (result.alreadyChecked) {
@@ -248,15 +315,39 @@ async function performCheck() {
   notifyBadgeUpdate(true);
 }
 
+function showCheckError(message) {
+  elements.checkError.textContent = message;
+  elements.checkError.classList.remove('hidden');
+  showView('ready');
+}
+
+async function playPrank(prank, isGandon) {
+  // Pretend to be the opposite result...
+  const fakeWin = isGandon;
+  elements.prankIcon.textContent = fakeWin ? '\u{1F451}' : '\u{1F921}';
+  elements.prankTitle.textContent = prank.show;
+  elements.prankTitle.className = `result-title ${fakeWin ? 'notgandon-title' : 'gandon-title'}`;
+  elements.prankSubtitle.textContent = '';
+  showView('prank');
+  await sleep(prank.revealAfterMs || 3000);
+
+  // ...then own up
+  elements.prankIcon.textContent = '\u{1F0CF}';
+  elements.prankSubtitle.textContent = prank.reveal;
+  await sleep(PRANK_REVEAL_HOLD_MS);
+}
+
 function showGandonResult(result) {
   elements.gandonDays.textContent = result.stats?.totalChecks || 1;
   elements.notGandonCount.textContent = result.stats?.notGandonCount || 0;
+  Extras.renderResultExtras(elements.gandonExtras, result, { fresh: true });
   showView('gandon');
 }
 
 async function showNotGandonResult(result) {
   createConfetti();
   elements.notGandonTotal.textContent = result.stats?.notGandonCount || 1;
+  Extras.renderResultExtras(elements.notGandonExtras, result, { fresh: true });
 
   // Get rank
   try {
@@ -302,6 +393,7 @@ function showAlreadyChecked(result) {
     elements.usernameDisplayAlready.classList.remove('hidden');
   }
 
+  Extras.renderResultExtras(elements.alreadyExtras, result);
   startCountdown(result.nextCheckAvailable);
   showView('alreadyChecked');
 }
@@ -393,6 +485,7 @@ async function loadLeaderboard() {
         </div>
       `;
     }).join('');
+    addEntryMeta(elements.leaderboardList, leaderboard);
 
   } catch (error) {
     console.error('Leaderboard failed:', error);
@@ -403,7 +496,15 @@ async function loadLeaderboard() {
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
-  return div.innerHTML;
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Rank title and badges under each name (fields from newer servers)
+function addEntryMeta(listElement, entries) {
+  listElement.querySelectorAll('.leaderboard-item').forEach((row, index) => {
+    const meta = Extras.renderEntryMeta(entries[index]);
+    if (meta) row.querySelector('.username').append(meta);
+  });
 }
 
 // ========================================
@@ -443,6 +544,7 @@ async function loadShameboard() {
         </div>
       `;
     }).join('');
+    addEntryMeta(elements.shameboardList, shameboard);
 
   } catch (error) {
     console.error('Shameboard failed:', error);
@@ -457,11 +559,198 @@ async function loadUserIdentity() {
   try {
     const response = await API.getProfile(fingerprintHash);
     if (response.success && response.data.displayName) {
-      elements.userIdentity.textContent = response.data.displayName;
+      const rankTitle = response.data.gandonRank?.title;
+      elements.userIdentity.textContent = rankTitle
+        ? `${response.data.displayName} \u00B7 ${rankTitle}`
+        : response.data.displayName;
     }
   } catch (error) {
     // Silently fail - user identity is not critical
     console.error('Failed to load user identity:', error);
+  }
+}
+
+// ========================================
+// Profile (Dossier)
+// ========================================
+async function loadProfile() {
+  showView('profile');
+  const content = elements.profileContent;
+  content.replaceChildren(Extras.el('p', 'muted-text', 'Loading...'));
+
+  try {
+    const response = await API.getProfile(fingerprintHash);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to load your file');
+    }
+    const profile = response.data;
+    const { el } = Extras;
+    const parts = [el('p', 'profile-name', profile.username)];
+
+    if (profile.gandonRank) {
+      parts.push(el('p', 'profile-rank', profile.gandonRank.title));
+      if (profile.gandonRank.nextTitle) {
+        const checks = profile.gandonRank.checksToNext;
+        parts.push(el('p', 'profile-next', `${checks} more check${checks === 1 ? '' : 's'} to ${profile.gandonRank.nextTitle}`));
+      }
+    }
+
+    const stats = el('div', 'stats-box profile-stats');
+    const addStat = (value, label) => {
+      const stat = el('div', 'stat');
+      stat.append(el('span', 'stat-value', String(value)), el('span', 'stat-label', label));
+      stats.append(stat);
+    };
+    addStat(profile.stats?.totalChecks || 0, 'checks');
+    addStat(profile.stats?.notGandonCount || 0, 'escapes');
+    if (profile.streak) addStat(profile.streak.checkStreak, 'day streak');
+    parts.push(stats);
+
+    if (profile.streak?.message) {
+      parts.push(el('p', 'flavor-line', profile.streak.message));
+    }
+
+    if (profile.achievements) {
+      parts.push(el('h3', 'profile-section-title', 'ACHIEVEMENTS'), Extras.renderAchievementGrid(profile.achievements));
+    }
+
+    parts.push(Extras.createShareButton(profile.username));
+    content.replaceChildren(...parts);
+
+  } catch (error) {
+    console.error('Profile failed:', error);
+    content.replaceChildren(Extras.el('p', 'muted-text', error.message || 'Failed to load your file'));
+  }
+}
+
+// ========================================
+// Squads
+// ========================================
+function setSquadMessage(element, message, isError = false) {
+  element.textContent = message || '';
+  element.classList.toggle('error', isError);
+}
+
+async function loadSquads(message) {
+  showView('squads');
+  setSquadMessage(elements.squadsMessage, message);
+  elements.squadList.replaceChildren(Extras.el('p', 'muted-text', 'Loading...'));
+
+  try {
+    const response = await API.getSquads(fingerprintHash);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to load squads');
+    }
+
+    const squads = response.data.squads;
+    if (!squads.length) {
+      elements.squadList.replaceChildren(Extras.el('p', 'muted-text', 'No squads yet. Create one or join with a code!'));
+      return;
+    }
+
+    elements.squadList.replaceChildren(...squads.map(squad => {
+      const row = Extras.el('button', 'leaderboard-item squad-row');
+      row.type = 'button';
+      row.append(
+        Extras.el('span', 'username', squad.name),
+        Extras.el('span', 'score', `${squad.memberCount} \u{1F464}`)
+      );
+      row.setAttribute('aria-label', `Open ${squad.name}, ${squad.memberCount} members`);
+      row.addEventListener('click', () => openSquad(squad.code));
+      return row;
+    }));
+
+  } catch (error) {
+    console.error('Squads failed:', error);
+    elements.squadList.replaceChildren();
+    setSquadMessage(elements.squadsMessage, error.message, true);
+  }
+}
+
+async function submitSquadForm(event, action) {
+  event.preventDefault();
+  const input = action === 'join' ? elements.joinCodeInput : elements.squadNameInput;
+  const value = input.value.trim();
+  if (!value) return;
+
+  try {
+    const response = action === 'join'
+      ? await API.joinSquad(fingerprintHash, value)
+      : await API.createSquad(fingerprintHash, value);
+    if (!response.success) {
+      setSquadMessage(elements.squadsMessage, response.error, true);
+      return;
+    }
+    input.value = '';
+    openSquad(response.data.code, response.data.message);
+  } catch (error) {
+    console.error('Squad action failed:', error);
+    setSquadMessage(elements.squadsMessage, OFFLINE_MESSAGE, true);
+  }
+}
+
+async function openSquad(code, message) {
+  currentSquadCode = code;
+  showView('squadBoard');
+  elements.squadBoardTitle.textContent = '\u{1F465} ...';
+  elements.copySquadCode.textContent = `CODE: ${code} \u{1F4CB}`;
+  elements.copySquadCode.setAttribute('aria-label', `Copy squad code ${code}`);
+  elements.squadToday.textContent = '';
+  setSquadMessage(elements.squadBoardMessage, message);
+  elements.squadMembers.replaceChildren(Extras.el('p', 'muted-text', 'Loading...'));
+
+  try {
+    const response = await API.getSquad(fingerprintHash, code);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to load squad');
+    }
+
+    const squad = response.data;
+    elements.squadBoardTitle.textContent = `\u{1F465} ${squad.name}`;
+    elements.squadToday.textContent = squad.today?.message || '';
+
+    elements.squadMembers.replaceChildren(...squad.members.map(member => {
+      const row = Extras.el('div', `leaderboard-item${member.isYou ? ' highlight' : ''}`);
+      const status = Extras.el('span', 'rank', Extras.SQUAD_STATUS_EMOJI[member.today] || '#' + member.rank);
+      status.title = { gandon: 'Gandon today', 'not-gandon': 'NOT gandon today', pending: 'Has not checked yet' }[member.today] || '';
+      const name = Extras.el('span', 'username', member.isYou ? `${member.username} (you)` : member.username);
+      const meta = Extras.renderEntryMeta(member);
+      if (meta) name.append(meta);
+      row.append(status, name, Extras.el('span', 'score', `${member.notGandonCount}x`));
+      return row;
+    }));
+
+  } catch (error) {
+    console.error('Squad board failed:', error);
+    elements.squadMembers.replaceChildren();
+    setSquadMessage(elements.squadBoardMessage, error.message, true);
+  }
+}
+
+async function copySquadCode() {
+  if (!currentSquadCode) return;
+  try {
+    await navigator.clipboard.writeText(currentSquadCode);
+    setSquadMessage(elements.squadBoardMessage, 'Code copied! Send it to your fellow gandons.');
+  } catch (error) {
+    setSquadMessage(elements.squadBoardMessage, `Code: ${currentSquadCode}`);
+  }
+}
+
+async function leaveSquad() {
+  if (!currentSquadCode || !confirm('Leave this squad? They will not miss you, gandon.')) return;
+
+  try {
+    const response = await API.leaveSquad(fingerprintHash, currentSquadCode);
+    if (!response.success) {
+      setSquadMessage(elements.squadBoardMessage, response.error, true);
+      return;
+    }
+    currentSquadCode = null;
+    loadSquads(response.data.message);
+  } catch (error) {
+    console.error('Leave squad failed:', error);
+    setSquadMessage(elements.squadBoardMessage, OFFLINE_MESSAGE, true);
   }
 }
 
@@ -519,13 +808,7 @@ async function init() {
 // ========================================
 elements.checkBtn.addEventListener('click', performCheck);
 elements.leaderboardBtn.addEventListener('click', loadLeaderboard);
-elements.backFromLeaderboard.addEventListener('click', () => {
-  if (lastCheckResult) {
-    showAlreadyChecked(lastCheckResult);
-  } else {
-    showView('ready');
-  }
-});
+elements.backFromLeaderboard.addEventListener('click', goHome);
 elements.setUsernameBtn.addEventListener('click', () => setUsername());
 elements.usernameInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') setUsername();
@@ -538,13 +821,18 @@ elements.usernameInputAlready.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') setUsername(elements.usernameInputAlready, elements.usernameSectionAlready, elements.usernameDisplayAlready);
 });
 elements.shameboardBtn.addEventListener('click', loadShameboard);
-elements.backFromShameboard.addEventListener('click', () => {
-  if (lastCheckResult) {
-    showAlreadyChecked(lastCheckResult);
-  } else {
-    showView('ready');
-  }
-});
+elements.backFromShameboard.addEventListener('click', goHome);
+// Profile
+elements.profileBtn.addEventListener('click', loadProfile);
+elements.backFromProfile.addEventListener('click', goHome);
+// Squads
+elements.squadsBtn.addEventListener('click', () => loadSquads());
+elements.backFromSquads.addEventListener('click', goHome);
+elements.joinSquadForm.addEventListener('submit', (e) => submitSquadForm(e, 'join'));
+elements.createSquadForm.addEventListener('submit', (e) => submitSquadForm(e, 'create'));
+elements.copySquadCode.addEventListener('click', copySquadCode);
+elements.leaveSquadBtn.addEventListener('click', leaveSquad);
+elements.backFromSquadBoard.addEventListener('click', () => loadSquads());
 
 // Start
 init();
